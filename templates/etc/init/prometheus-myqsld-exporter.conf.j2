@@ -1,0 +1,16 @@
+description "Prometheus Mysqld Exporter"
+start on (local-filesystems and net-device-up IFACE!=lo)
+stop on runlevel [016]
+
+respawn
+{% if upstart_version.stdout | replace("init (upstart ", "") |replace(")","") | version_compare('1.4', '>=') %}
+setuid root
+setgid {{ prometheus_exporters_common_group }}
+{% endif %}
+
+script
+  exec >> "{{ prometheus_exporters_common_log_dir }}/mysqld-exporter.log"
+  exec 2>&1
+  exec {{ prometheus_exporters_common_root_dir }}/mysqld_exporter_current/mysqld_exporter {% for flag, flag_value in prometheus_mysqld_exporter_config_flags.iteritems() %}-{{ flag }}={{ flag_value }} {% endfor %}
+
+end script

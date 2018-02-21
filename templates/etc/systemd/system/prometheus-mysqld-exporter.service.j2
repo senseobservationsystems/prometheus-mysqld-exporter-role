@@ -1,0 +1,15 @@
+[Unit]
+Description=Prometheus MySQLd Exporter
+After=network.target
+
+[Service]
+Type=simple
+User={{ prometheus_exporters_common_user }}
+Group={{ prometheus_exporters_common_group }}
+ExecStart={{ prometheus_exporters_common_root_dir }}/mysqld_exporter_current/mysqld_exporter {% for flag, flag_value in prometheus_mysqld_exporter_config_flags.iteritems() %}-{{ flag }}={{ flag_value }} {% endfor %}
+
+SyslogIdentifier=prometheus_mysqld_exporter
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

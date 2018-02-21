@@ -1,0 +1,97 @@
+---
+
+- name: download prometheus mysqld exporter binary
+  get_url:
+    url: "{{ url }}"
+    dest: "{{ prometheus_exporters_common_dist_dir }}"
+
+- name: unarchive binary tarball
+  unarchive:
+    copy: no
+    src: "{{ prometheus_exporters_common_dist_dir }}/{{ prometheus_mysqld_exporter_release_name }}.tar.gz"
+    dest: "{{ prometheus_exporters_common_dist_dir }}"
+    creates: "{{ prometheus_exporters_common_dist_dir }}/{{ prometheus_mysqld_exporter_release_name }}/mysqld_exporter"
+  register: prometheus_mysqld_exporter_updated
+  notify:
+    - restart mysqld exporter
+
+- name: update group and owner for files
+  file:
+    path: "{{ prometheus_mysqld_exporter_release_name }}"
+    state: directory
+    recurse: yes
+    owner: "{{ prometheus_exporters_common_user}}"
+    group: "{{ prometheus_exporters_common_group }}"
+  when: prometheus_mysqld_exporter_updated | changed
+
+- name: create symlink to the current release
+  file:
+    src: "{{ prometheus_exporters_common_dist_dir }}/{{ prometheus_mysqld_exporter_release_name }}"
+    path: "{{ prometheus_exporters_common_root_dir }}/mysqld_exporter_current"
+    state: link
+
+- name: create systemd service unit
+  template:
+    src: etc/systemd/system/prometheus-mysqld-exporter.service.j2
+    dest: /etc/systemd/system/prometheus-mysqld-exporter.service
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_service_mgr == 'systemd'
+  notify:
+    - service reenable
+    - restart mysqld exporter
+
+- name: Looking which version of upstart is install
+  command: initctl version
+  when: ansible_service_mgr == 'upstart'
+  register: upstart_version
+
+- name: create init service unit
+  template:
+    src: etc/init/prometheus-mysqld-exporter.conf.j2
+    dest: /etc/init/prometheus-mysqld-exporter.conf
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_service_mgr == 'upstart'
+  notify:
+    - reinit mysqld exporter
+    - restart mysqld exporter
+
+- name: create sysvinit service unit
+  template:
+    src: etc/init.d/prometheus-mysqld-exporter.j2
+    dest: /etc/init.d/prometheus-mysqld-exporter
+    owner: root
+    group: root
+    mode: 0755
+  when: ansible_service_mgr == 'sysvinit'
+  notify:
+    - restart mysqld exporter
+
+- meta: flush_handlers
+
+- name: ensure db user is exists
+  mysql_user:
+    name: "{{ prometheus_mysqld_exporter_db_user }}"
+    password: "{{ prometheus_mysqld_exporter_db_password }}"
+    host: "{{ ansible_default_ipv4.address }}"
+    priv: "*.*:SELECT,PROCESS,REPLICATION CLIENT"
+
+- name: Create user prometheus home directory
+  file: 'path=/home/{{ prometheus_exporters_common_user }} state=directory'
+
+- name: configuring my.cnf
+  template:
+    src: "my.cnf.j2"
+    dest: "/home/{{ prometheus_exporters_common_user }}/.my.cnf"
+    owner: "{{ prometheus_exporters_common_user }}"
+    group: "{{ prometheus_exporters_common_group }}"
+    mode: "u=rw,g=,o="
+
+- name: ensure prometheus mysqld exporter service is enabled and started
+  service:
+    name: prometheus-mysqld-exporter
+    state: started
+    enabled: yes

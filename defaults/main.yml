@@ -1,0 +1,13 @@
+---
+
+prometheus_mysqld_exporter_version: 0.10.0
+prometheus_mysqld_exporter_release_name: "mysqld_exporter-{{ prometheus_mysqld_exporter_version }}.linux-amd64"
+url: "https://github.com/prometheus/mysqld_exporter/releases/download/v{{ prometheus_mysqld_exporter_version }}/{{ prometheus_mysqld_exporter_release_name }}.tar.gz"
+
+prometheus_mysqld_exporter_config_flags:
+  'web.listen-address': '0.0.0.0:9104'
+  'log.level': 'info'
+  'config.my-cnf': '/home/{{ prometheus_exporters_common_user }}/.my.cnf'
+
+prometheus_mysqld_exporter_db_user: 'mysqld_exporter'
+prometheus_mysqld_exporter_db_password: ''

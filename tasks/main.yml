@@ -80,7 +80,11 @@
     priv: "*.*:SELECT,PROCESS,REPLICATION CLIENT"
 
 - name: Create user prometheus home directory
-  file: 'path=/home/{{ prometheus_exporters_common_user }} state=directory'
+  file:
+    path: "/home/{{ prometheus_exporters_common_user }}"
+    owner: "{{ prometheus_exporters_common_user }}"
+    group: "{{ prometheus_exporters_common_group }}"
+    state: directory
 
 - name: configuring my.cnf
   template:

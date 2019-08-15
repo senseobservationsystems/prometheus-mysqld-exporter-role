@@ -1,4 +1,25 @@
 ---
+- name: ensure db user is exists
+  mysql_user:
+    name: "{{ prometheus_mysqld_exporter_db_user }}"
+    password: "{{ prometheus_mysqld_exporter_db_password }}"
+    host: "{{ ansible_default_ipv4.address }}"
+    priv: "*.*:SELECT,PROCESS,REPLICATION CLIENT"
+
+- name: Create user prometheus home directory
+  file:
+    path: "/home/{{ prometheus_exporters_common_user }}"
+    owner: "{{ prometheus_exporters_common_user }}"
+    group: "{{ prometheus_exporters_common_group }}"
+    state: directory
+
+- name: configuring my.cnf
+  template:
+    src: "my.cnf.j2"
+    dest: "/home/{{ prometheus_exporters_common_user }}/.my.cnf"
+    owner: "{{ prometheus_exporters_common_user }}"
+    group: "{{ prometheus_exporters_common_group }}"
+    mode: "u=rw,g=,o="
 
 - name: download prometheus mysqld exporter binary
   get_url:
@@ -72,30 +93,7 @@
 
 - meta: flush_handlers
 
-- name: ensure db user is exists
-  mysql_user:
-    name: "{{ prometheus_mysqld_exporter_db_user }}"
-    password: "{{ prometheus_mysqld_exporter_db_password }}"
-    host: "{{ ansible_default_ipv4.address }}"
-    priv: "*.*:SELECT,PROCESS,REPLICATION CLIENT"
-
-- name: Create user prometheus home directory
-  file:
-    path: "/home/{{ prometheus_exporters_common_user }}"
-    owner: "{{ prometheus_exporters_common_user }}"
-    group: "{{ prometheus_exporters_common_group }}"
-    state: directory
-
-- name: configuring my.cnf
-  template:
-    src: "my.cnf.j2"
-    dest: "/home/{{ prometheus_exporters_common_user }}/.my.cnf"
-    owner: "{{ prometheus_exporters_common_user }}"
-    group: "{{ prometheus_exporters_common_group }}"
-    mode: "u=rw,g=,o="
-
-- name: ensure prometheus mysqld exporter service is enabled and started
+- name: ensure prometheus mysqld exporter service is enabled
   service:
     name: prometheus-mysqld-exporter
-    state: started
     enabled: yes
